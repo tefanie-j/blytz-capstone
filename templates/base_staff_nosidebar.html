@@ -7,13 +7,16 @@
   {% include "partials/topbar.html" with show_logo=True %}
   
   {# Main content area — no sidebar offset #}
-  <main class="pt-16">
-    <div class="p-6">
+  <main class="staff-main">
+    <div class="px-6 pb-6 pt-2">
       {% block staff_content %}{% endblock %}
     </div>
   </main>
 
 </div>
+
+{# Shared modal dialog (same one as base_staff) #}
+{% include "components/staff_modal.html" %}
 {% endblock %}
 
 {# Footer — same as base_staff but without ml-60 #}

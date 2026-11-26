@@ -1,0 +1,104 @@
+<style>
+  .bc { margin:auto; padding:0; border:1px solid rgba(255,255,255,.7); width:calc(100% - 2rem); max-width:40rem;
+        border-radius:1.75rem; color:#111; overflow:hidden;
+        background:rgba(255,255,255,.72);
+        -webkit-backdrop-filter:blur(30px) saturate(1.5); backdrop-filter:blur(30px) saturate(1.5);
+        box-shadow:0 30px 80px rgba(0,0,0,.25); }
+  .bc::backdrop { background:rgba(0,0,0,.25); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .bc__panel { padding:2rem 2.25rem 1.75rem; text-align:left; }
+  .bc__title { margin:0; font-size:clamp(1.5rem,4vw,2.1rem); line-height:1.2; font-weight:700; color:#1c1c1e; }
+  .bc__warn { margin:1.75rem 0 0; font-size:1.1rem; line-height:1.45; color:#111; }
+  .bc__q { margin:1.5rem 0 0; font-size:1.1rem; line-height:1.45; color:#111; }
+  .bc__actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.85rem; margin-top:2.25rem; }
+  .bc__btn { min-height:3rem; padding:.7rem 1.6rem; border:0; border-radius:9999px; font-size:1.05rem; font-weight:600; cursor:pointer;
+             transition:background .15s, transform .05s; }
+  .bc__btn:active { transform:scale(.98); }
+  .bc__btn--ghost { background:rgba(120,120,128,.16); color:#48484a; }
+  .bc__btn--ghost:hover { background:rgba(120,120,128,.26); }
+  .bc__btn--go { background:#FFD60A; color:#000; box-shadow:0 6px 16px rgba(255,214,10,.35); }
+  .bc__btn--go:hover { background:#f5cb00; }
+  .bc__btn:disabled { opacity:.6; cursor:default; }
+  @media (max-width:480px) { .bc__panel { padding:1.5rem 1.25rem 1.25rem; } .bc__actions { justify-content:stretch; } .bc__btn { flex:1; } }
+</style>
+
+<dialog id="blytz-confirm" class="bc" aria-labelledby="bc-title">
+  <div class="bc__panel">
+    <h2 id="bc-title" class="bc__title"></h2>
+    <p id="bc-warning" class="bc__warn" role="alert" hidden></p>
+    <p id="bc-question" class="bc__q" hidden></p>
+    <div class="bc__actions">
+      <button type="button" class="bc__btn bc__btn--ghost" id="bc-cancel">Cancel</button>
+      <button type="button" class="bc__btn bc__btn--go" id="bc-yes">Yes</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var dlg = document.getElementById('blytz-confirm');
+  if (!dlg) return;
+  var title = document.getElementById('bc-title');
+  var warn = document.getElementById('bc-warning');
+  var q = document.getElementById('bc-question');
+  var yes = document.getElementById('bc-yes');
+  var cancel = document.getElementById('bc-cancel');
+  var cur = null;
+
+  // opts: { title, warning, question, yesLabel, onYes, onCancel }
+  window.blytzConfirm = function (o) {
+    if (typeof dlg.showModal !== 'function') {   // very old browser fallback
+      var msg = o.title + (o.warning ? '\n\nWarning: ' + o.warning : '') + (o.question ? '\n' + o.question : '');
+      if (window.confirm(msg)) { o.onYes && o.onYes(); } else { o.onCancel && o.onCancel(); }
+      return;
+    }
+    cur = { yes: o.onYes, cancel: o.onCancel, done: false };
+    title.textContent = o.title;
+    warn.textContent = o.warning ? 'Warning: ' + o.warning : '';
+    warn.hidden = !o.warning; 
+    q.textContent = o.question || '';
+    q.hidden = !o.question;
+    yes.textContent = o.yesLabel || 'Yes';
+    yes.disabled = false;
+    yes.hidden = !!o.infoOnly;
+    cancel.textContent = o.infoOnly ? 'OK' : 'Cancel';
+    dlg.showModal();
+  };
+
+  yes.addEventListener('click', function () {
+    if (!cur) return;
+    yes.disabled = true;
+    cur.done = true;
+    var go = cur.yes;
+    dlg.close();
+    if (go) go();
+  });
+  cancel.addEventListener('click', function () { dlg.close(); });
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+  dlg.addEventListener('close', function () {
+    if (cur && !cur.done && cur.cancel) cur.cancel();
+    cur = null;
+  });
+
+  // Used by the Sales Pipeline stage dropdowns (table + lead detail).
+  window.blytzConfirmStageForm = function (form) {
+    var sel = form.elements.stage;
+    var chosen = sel.options[sel.selectedIndex];
+    if (chosen.defaultSelected) return false;          // nothing changed
+    var label = chosen.text.trim();
+    var order = form.dataset.order || 'this lead';
+    window.blytzConfirm({
+      title: 'Move ' + order + ' to ' + label + '?',
+      warning: 'The sales stage updates automatically from the job pipeline.',
+      question: 'Do you want to proceed anyway?',
+      yesLabel: 'Yes, Move to ' + label,
+      onYes: function () { form.submit(); },
+      onCancel: function () {
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].defaultSelected) sel.selectedIndex = i;
+        }
+      }
+    });
+    return false;
+  };
+})();
+</script>

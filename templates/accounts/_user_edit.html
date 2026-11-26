@@ -1,0 +1,138 @@
+{% comment %}
+  Edit-user body. Used by the full page (user_edit.html) and the staff modal (modal=True).
+  The role -> accounting checkbox toggle lives in static/js/staff_modal.js.
+{% endcomment %}
+<div class="ue-wrap">
+
+  {% include "components/_modal_messages.html" %}
+
+  <!-- Page header -->
+  <header class="ue-header">
+    <div>
+      <h1 class="ue-heading">Manage User</h1>
+      <p class="ue-subtitle">Manage account role, permissions, and access status.</p>
+    </div>
+  </header>
+
+  <!-- User information -->
+  <div class="ue-card" style="margin-top:1rem">
+      <div class="ue-body">
+      <div class="ue-user">
+
+        <div class="ue-user-info">
+          <div class="ue-avatar">{{ target.email|first|upper }}</div>
+          <div class="ue-user-details">
+            <p class="ue-user-email">{{ target.email }}</p>
+            <p class="ue-user-label">Blytz account</p>
+          </div>
+        </div>
+
+        <div class="ue-user-meta">
+          <span class="ue-meta-label">Role</span>
+          <span class="ue-meta-value">
+            {{ target.get_role_display|default:target.role|default:"Not assigned" }}
+          </span>
+        </div>
+
+        <div class="ue-user-meta">
+          <span class="ue-meta-label">Status</span>
+          {% if target.is_active %}
+            <span class="ue-status is-active">
+              <span class="ue-status-dot"></span> Active
+            </span>
+          {% else %}
+            <span class="ue-status is-inactive">
+              <span class="ue-status-dot"></span> Inactive
+            </span>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit form -->
+  <form method="post" id="user-edit-form" novalidate style="margin-top:1rem">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="ue-card" style="margin-bottom:1rem">
+        <div class="ue-body">
+          <p class="ue-error" style="margin:0">{{ form.non_field_errors }}</p>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="ue-card">
+
+      <div class="ue-card-head">
+        <div class="ue-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Account Settings</h2>
+          <p>Adjust the user's role, permissions, and access.</p>
+        </div>
+      </div>
+
+      <div class="ue-body">
+
+        <!-- Account role -->
+        <div class="ue-field">
+          <label for="id_role">Account Role</label>
+          <select name="role" id="id_role">
+            {% for value, label in form.fields.role.choices %}
+              <option value="{{ value }}"{% if form.role.value == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <p class="ue-help">Determines the user's role and available access within Blytz.</p>
+          {% if form.role.errors %}
+            <p class="ue-error">{{ form.role.errors|striptags }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Staff permissions -->
+        <div id="accounting-toggle-wrap" {% if form.role.value != 'staff' %}hidden{% endif %}>
+          <label class="ue-option">
+            <input type="checkbox"
+                   name="can_edit_accounting"
+                   {% if form.can_edit_accounting.value %}checked{% endif %}>
+            <div>
+              <strong>Can edit accounting</strong>
+              <span>Allows this staff member to modify accounting records and financial entries.</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Account status -->
+        <div style="margin-top:.75rem">
+          <label class="ue-option">
+            <input type="checkbox"
+                   name="is_active"
+                   {% if form.is_active.value %}checked{% endif %}>
+            <div>
+              <strong>Active Account</strong>
+              <span>This account is enabled according to the application's account access rules.</span>
+            </div>
+          </label>
+          {% if form.is_active.errors %}
+            <p class="ue-error">{{ form.is_active.errors|striptags }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="ue-actions">
+          <a href="{% url 'user_manage_list' %}" class="ue-cancel" data-smx-close>Cancel</a>
+          <button type="submit" class="ue-save">Save Changes</button>
+        </div>
+
+      </div>
+    </div>
+  </form>
+
+</div>

@@ -102,14 +102,17 @@ header.fixed.top-0 a:hover {
   {# Top bar #}
   {% include "partials/topbar.html" %}
 
-  {# Main content area (offset by sidebar + topbar) #}
-  <main class="ml-60 pt-16">
+  {# Main content area (offset by sidebar; .staff-main offsets it below the top bar) #}
+  <main class="staff-main ml-60">
     <div class="p-6">
       {% block staff_content %}{% endblock %}
     </div>
   </main>
 
 </div>
+
+{# Shared modal dialog used by data-staff-modal links (Sales, Accounting, Users) #}
+{% include "components/staff_modal.html" %}
 {% endblock %}
 
 {# Override footer for staff pages — compact, offset #}

@@ -1,0 +1,33 @@
+{% comment %}
+  Confirmation popup shown before staff move an order to its next status.
+  Included by staff_order_detail.html next to the form with id="advance-order-form".
+{% endcomment %}
+{% include "components/_confirm_dialog.html" %}
+
+<script>
+  (function () {
+    var form = document.getElementById('advance-order-form');
+    if (!form || !window.blytzConfirm) return;   // no JS support: plain submit
+
+    form.addEventListener('submit', function (e) {
+      if (form.dataset.confirmed === '1') return;
+      e.preventDefault();
+      var warning = "{{ production_confirm_message|escapejs }}";
+      window.blytzConfirm({
+        title: "Move {{ order.order_id|escapejs }} to {{ next_status_label|escapejs }}?",
+        warning: warning,
+        question: warning ? "Do you want to proceed anyway?" : "",
+        yesLabel: "Yes, Move to {{ next_status_label|escapejs }}",
+        onYes: function () {
+          form.dataset.confirmed = '1';
+          if (form.requestSubmit) form.requestSubmit(); else form.submit();
+        }
+      });
+    });
+
+    // Back button must ask again, not submit straight away.
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) form.dataset.confirmed = '';
+    });
+  })();
+</script>

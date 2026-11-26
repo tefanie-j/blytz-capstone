@@ -1,0 +1,115 @@
+{% comment %}
+  Create-staff body for the staff modal. Reuses the Manage User (ue-*) look.
+  The form carries data-close-on-save, so a successful save closes the dialog
+  (see static/js/staff_modal.js).
+{% endcomment %}
+<style>
+  .ue-field input[type="text"],
+  .ue-field input[type="email"],
+  .ue-field input[type="password"] {
+    display: block;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: .5rem .8rem;
+    border: 1px solid #d1d5db;
+    border-radius: .6rem;
+    background: #fff;
+    color: #1a1a1a;
+    font-size: .9rem;
+  }
+  .ue-field input:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 3px rgba(212,175,55,.2);
+  }
+  .ue-req { color: #b91c1c; }
+  .ue-two { display: grid; gap: 0 1rem; grid-template-columns: 1fr; }
+  @media (min-width: 600px) { .ue-two { grid-template-columns: 1fr 1fr; } }
+</style>
+
+<div class="ue-wrap">
+
+  {% include "components/_modal_messages.html" %}
+
+  <header class="ue-header">
+    <div>
+      <h1 class="ue-heading">Create Staff Account</h1>
+      <p class="ue-subtitle">Provide the details for the new staff account.</p>
+    </div>
+  </header>
+
+  <form method="post" novalidate data-close-on-save style="margin-top:1rem">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="ue-card" style="margin-bottom:1rem">
+        <div class="ue-body">
+          <p class="ue-error" style="margin:0">{{ form.non_field_errors|striptags }}</p>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="ue-card">
+      <div class="ue-card-head">
+        <div class="ue-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="10" cy="7" r="4"/>
+            <path d="M20 8v6"/><path d="M23 11h-6"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Staff Information</h2>
+          <p>They sign in with this email and the temporary password.</p>
+        </div>
+      </div>
+
+      <div class="ue-body">
+
+        <div class="ue-field">
+          <label for="id_email">Email <span class="ue-req">*</span></label>
+          <input type="email" name="email" id="id_email" required autocomplete="off"
+                 placeholder="Enter email" value="{{ form.email.value|default_if_none:'' }}">
+          {% if form.email.errors %}<p class="ue-error">{{ form.email.errors|striptags }}</p>{% endif %}
+        </div>
+
+        <div class="ue-field">
+          <label for="id_temporary_password">Temporary password <span class="ue-req">*</span></label>
+          <input type="password" name="temporary_password" id="id_temporary_password" required
+                 autocomplete="new-password" placeholder="At least 8 characters">
+          {% if form.temporary_password.errors %}<p class="ue-error">{{ form.temporary_password.errors|striptags }}</p>{% endif %}
+        </div>
+
+        <div class="ue-two">
+          <div class="ue-field">
+            <label for="id_first_name">First name</label>
+            <input type="text" name="first_name" id="id_first_name" autocomplete="off"
+                   placeholder="Enter first name" value="{{ form.first_name.value|default_if_none:'' }}">
+          </div>
+          <div class="ue-field">
+            <label for="id_last_name">Last name</label>
+            <input type="text" name="last_name" id="id_last_name" autocomplete="off"
+                   placeholder="Enter last name" value="{{ form.last_name.value|default_if_none:'' }}">
+          </div>
+        </div>
+
+        <label class="ue-option">
+          <input type="checkbox" name="can_edit_accounting"
+                 {% if form.can_edit_accounting.value %}checked{% endif %}>
+          <div>
+            <strong>Can edit accounting</strong>
+            <span>Allows this staff member to modify accounting records and financial entries.</span>
+          </div>
+        </label>
+
+        <div class="ue-actions">
+          <a href="{% url 'user_manage_list' %}" class="ue-cancel" data-smx-close>Cancel</a>
+          <button type="submit" class="ue-save">Create staff account</button>
+        </div>
+
+      </div>
+    </div>
+  </form>
+
+</div>

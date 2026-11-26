@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from apps.core.http import render_modal
 
 from apps.accounts.decorators import staff_required
 from apps.designs.models import ActivityLog, Design
@@ -68,7 +69,7 @@ def update_lead_stage(request, lead_id):
             design=lead.order.design if lead.order_id else None,
             order=lead.order,
             kind=ActivityLog.Kind.LEAD_STAGE_CHANGED,
-            detail=f"{old_label} → {lead.get_stage_display()} · by {actor}",
+            detail=f"{old_label} → {lead.get_stage_display()} · changed manually by {actor}",
         )
         messages.success(request, f"Lead moved to {lead.get_stage_display()}.")
     return redirect(request.POST.get("next") or "sales_pipeline")
@@ -82,12 +83,13 @@ def lead_detail(request, lead_id):
     )
     timeline = build_order_timeline(lead.order)
 
-    return render(
+    return render_modal(
         request,
-        "sales/lead_detail.html",
+        "sales/_lead_detail.html",
         {
             "lead": lead,
             "timeline": timeline,
             "stage_choices": Lead.Stage.choices,
         },
+        "sales_pipeline",
     )

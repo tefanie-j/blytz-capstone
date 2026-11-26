@@ -2,6 +2,7 @@ import csv
 from datetime import datetime, time
 from decimal import Decimal
 
+from apps.sales.stages import sync_lead_stage
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -17,6 +18,7 @@ from apps.accounting.charts import (
     payments_by_channel_chart,
 )
 from apps.accounts.decorators import staff_required
+from apps.core.http import render_modal
 from apps.designs.garment_choices import format_garment_display
 from apps.orders.models import Order, Payment, PaymentChannel
 
@@ -145,6 +147,7 @@ class ManualPaymentForm(forms.Form):
 
 @staff_required
 def accounting_list(request):
+    tab = "charts" if request.GET.get("tab") == "charts" else "list"
     orders = list(
         Order.objects.select_related("customer", "design").prefetch_related("payments")
     )
@@ -165,6 +168,7 @@ def accounting_list(request):
         "accounting/list.html",
         {
             "orders": orders,
+            "tab": tab,
             "total_collected": total_collected,
             "total_outstanding": total_outstanding,
             "can_edit": request.user.can_edit_accounting_page(),
@@ -282,14 +286,15 @@ def accounting_detail(request, order_id):
                 order.save(
                     update_fields=["accounting_edited_by", "accounting_edited_at"]
                 )
+                sync_lead_stage(order)
                 messages.success(request, "Manual payment recorded.")
                 return redirect("accounting_detail", order_id=order.order_id)
         else:
             raise PermissionDenied
 
-    return render(
+    return render_modal(
         request,
-        "accounting/detail.html",
+        "accounting/_detail.html",
         {
             "order": order,
             "payments": order.payments.all(),
@@ -297,4 +302,5 @@ def accounting_detail(request, order_id):
             "total_form": total_form,
             "payment_form": payment_form,
         },
+        "accounting_list",
     )

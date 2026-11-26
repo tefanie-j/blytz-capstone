@@ -1,0 +1,194 @@
+{% load static %}
+{% comment %}
+  Staff modal dialog (shared shell).
+
+  Included once by base_staff.html / base_staff_nosidebar.html. Any link marked
+  with a `data-staff-modal="<url>"` attribute opens that URL in this dialog
+  instead of navigating (see static/js/staff_modal.js). The href stays on the
+  link, so middle-click / open-in-new-tab / no-JS still reach the full page.
+
+  Optional link attributes:
+    data-modal-title  label shown in the dialog header and used for screen readers
+    data-modal-size   "narrow" for small forms (default is wide)
+
+  Used by: Sales pipeline, Accounting, Users. Intentionally NOT used by Orders.
+{% endcomment %}
+<style>
+  .smx[hidden] { display: none !important; }
+  .smx {
+    position: fixed; inset: 0; z-index: 100001; /* above the top bar and its dropdowns */
+    display: flex; align-items: center; justify-content: center;
+    box-sizing: border-box;
+    padding: 1rem;
+  }
+  .smx__backdrop {
+    position: fixed; inset: 0;
+    background: rgba(10, 10, 10, .28);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    animation: smx-fade .15s ease-out;
+  }
+
+  /* ── Glass panel ───────────────────────────────────── */
+  .smx__panel {
+    position: relative;
+    display: flex; flex-direction: column;
+    width: 100%; max-width: 64rem;
+    max-height: 100%;
+    color: #1a1a1a;
+    border-radius: 1.75rem;
+    border: 1px solid rgba(255, 255, 255, .75);
+    background: rgba(255, 255, 255, .72);
+    -webkit-backdrop-filter: blur(30px) saturate(1.5); backdrop-filter: blur(30px) saturate(1.5);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .28);
+    overflow: hidden;
+    outline: none;
+    animation: smx-pop .18s ease-out;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .smx__panel { background: rgba(255, 255, 255, .97); }
+  }
+  .smx--narrow .smx__panel { max-width: 40rem; }
+
+  .smx__bar {
+    flex: 0 0 auto; box-sizing: border-box; height: 3.25rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 0 .85rem 0 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, .07);
+    background: rgba(255, 255, 255, .55);
+  }
+  .smx__kicker {
+    margin: 0; font-size: .78rem; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: #4b5563;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .smx__close {
+    flex: 0 0 auto;
+    width: 2.25rem; height: 2.25rem !important;
+    min-width: 2.25rem; min-height: 2.25rem !important; /* beats the touch-target rule in responsive.css */
+    padding: 0; margin: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #9ca3af; border-radius: 9999px;
+    background: rgba(255, 255, 255, .8) !important; color: #111827 !important;
+    opacity: 1 !important; visibility: visible !important;
+    cursor: pointer;
+  }
+  .smx__close svg {
+    display: block; width: 1rem; height: 1rem; pointer-events: none;
+    fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round;
+  }
+  .smx__close:hover { background: #111827 !important; color: #fff !important; border-color: #111827; }
+  .smx__close:focus-visible { outline: 2px solid #D4AF37; outline-offset: 2px; }
+
+  .smx__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: .35rem 1.5rem 1.25rem; }
+
+  .smx__state { padding: 2.5rem 1rem; text-align: center; font-size: .9rem; color: #6b7280; }
+  .smx__state a { color: #8a6a00; font-weight: 600; text-decoration: underline; }
+  .smx__spin {
+    display: inline-block; width: 1.1rem; height: 1.1rem; margin-right: .5rem;
+    vertical-align: -.2rem; border-radius: 9999px;
+    border: 2px solid #e5e7eb; border-top-color: #D4AF37;
+    animation: smx-spin .7s linear infinite;
+  }
+
+  /* Messages shown inside the dialog after a save */
+  .smx-msgs { display: grid; gap: .5rem; margin: 0 0 1rem; }
+  .smx-msg {
+    margin: 0; padding: .6rem .85rem; border-radius: .75rem;
+    font-size: .85rem; font-weight: 600;
+    background: rgba(243, 244, 246, .9); color: #374151; border: 1px solid #e5e7eb;
+  }
+  .smx-msg--success { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+  .smx-msg--error   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+  .smx-msg--warning { background: #fffbea; color: #78350f; border-color: #ecd98a; }
+
+  /* ── Re-fit the full-page detail layouts to the glass dialog ── */
+  .smx .so-wrap, .smx .ue-wrap { max-width: none; margin: 0; padding: 0; }
+  .smx .so-head { margin-top: 0; align-items: flex-start; }
+  .smx .so-idchip {
+    font-size: 1.6rem; font-weight: 800; text-transform: uppercase;
+    padding: .35rem 1rem; border-radius: .85rem;
+  }
+  .smx .so-title { margin-top: .65rem; font-size: 1.1rem; color: #4b5563; }
+  .smx .so-pills { margin-top: 1rem; gap: .6rem; }
+  .smx .so-pills > * { font-size: .9rem; padding: .3rem .95rem; border-radius: 9999px; }
+  .smx .so-grid { margin-top: 1.25rem; gap: 1.5rem; }
+  .smx .so-col { gap: 1.5rem; }
+  .smx .ue-header { margin-top: 0; }
+  .smx .ue-heading { font-size: 1.4rem; }
+
+  /* Stage dropdown + black "Update stage" button */
+  .smx .so-action { align-items: center; gap: .75rem; }
+  .smx .so-action .so-input {
+    min-height: 3rem; padding: .5rem 1rem; border-radius: .9rem;
+    border: 1px solid rgba(0, 0, 0, .12); background: rgba(255, 255, 255, .85);
+    font-size: 1.02rem; color: #111;
+  }
+  .smx .so-update {
+    min-height: 3rem; padding: .5rem 1.5rem; border-radius: .9rem;
+    border: 1px solid #0a0a0a; background: #0a0a0a; color: #D4AF37;
+    font-size: 1rem; font-weight: 600;
+  }
+  .smx .so-update:hover { background: #1c1c1c; border-color: #1c1c1c; color: #e6c350 !important; }
+
+  /* Glass cards */
+  .smx .so-card, .smx .ue-card {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, .85);
+    background: rgba(255, 255, 255, .6);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .08), inset 0 1px 0 rgba(255, 255, 255, .9);
+  }
+  .smx .so-card-head, .smx .ue-card-head {
+    padding: 1.1rem 1.5rem;
+    background: rgba(243, 244, 246, .55);
+    border-bottom: 1px solid rgba(0, 0, 0, .07);
+  }
+  .smx .so-card-head h2, .smx .ue-card-head h2 {
+    font-size: 1.1rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+  }
+  .smx .so-body { padding: 1.25rem 1.5rem; }
+  .smx .so-link { font-size: .98rem; font-weight: 700; color: #8a6a00; }
+
+  .smx .so-dl > div {
+    padding: .85rem 0; font-size: 1.02rem;
+    border-bottom: 1px solid rgba(0, 0, 0, .08);
+  }
+  .smx .so-dl > div:last-child { border-bottom: 0; }
+  .smx .so-dl dt { color: #6b7280; }
+  .smx .so-dl dd { color: #111; }
+  .smx .so-muted { font-size: 1rem; color: #4b5563; }
+
+  @media (min-width: 900px) {
+    .smx .so-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: start; }
+  }
+
+  html.smx-open { overflow: hidden; }
+
+  @keyframes smx-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes smx-pop  { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes smx-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .smx__backdrop, .smx__panel, .smx__spin { animation: none; }
+  }
+  @media (max-width: 639px) {
+    .smx { padding: 0; align-items: stretch; }
+    .smx__panel { max-height: 100dvh; border-radius: 0; padding-top: env(safe-area-inset-top, 0px); }
+    .smx__body { padding: .75rem 1rem 1rem; }
+    .smx .so-card, .smx .ue-card { border-radius: 1.1rem; }
+  }
+</style>
+
+<div id="staff-modal" class="smx" hidden>
+  <div class="smx__backdrop" data-smx-close></div>
+  <div class="smx__panel" role="dialog" aria-modal="true" aria-label="Details" tabindex="-1" data-smx-panel>
+    <div class="smx__bar">
+      <p class="smx__kicker" data-smx-kicker></p>
+      <button type="button" class="smx__close" data-smx-close aria-label="Close dialog">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="smx__body" data-smx-body aria-live="polite"></div>
+  </div>
+</div>
+
+<script src="{% static 'js/staff_modal.js' %}" defer></script>

@@ -1,28 +1,12 @@
-{% extends "base_staff_nosidebar.html" %}
-
-{% block title %}Lead · {{ lead.customer.get_full_name }} — Blytz{% endblock %}
-
-{% block staff_content %}
-{% include "orders/_staff_detail_styles.html" %}
-
+{# Lead detail body. Used by the full page (lead_detail.html) and by the staff modal (modal=True). #}
 <section class="so-wrap">
 
-  {# ── Breadcrumb ─────────────────────────────────────── #}
-  <p class="so-crumbs">
-    <a href="{% url 'sales_pipeline' %}" aria-label="Back to Sales" class="so-back">
-      <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
-      </svg>
-    </a>
-    <a href="{% url 'sales_pipeline' %}" style="text-decoration:underline">Sales</a>
-    <span>/</span>
-    <span>{{ lead.customer.get_full_name|default:lead.customer.email }}</span>
-  </p>
+  {% include "components/_modal_messages.html" %}
 
   {# ── Header ─────────────────────────────────────────── #}
   <header class="so-head">
     <div>
-      <h1 class="so-name">{{ lead.customer.get_full_name|default:lead.customer.email }}</h1>
+      <h1 style="margin:0"><span class="so-idchip">{{ lead.customer.get_full_name|default:lead.customer.email }}</span></h1>
       <p class="so-title">{{ lead.customer.email }} · {{ lead.customer.phone|default:"No phone" }}</p>
       <div class="so-pills">
         <span class="so-stage s-{{ lead.stage }}">{{ lead.get_stage_display }}</span>
@@ -33,7 +17,9 @@
       </div>
     </div>
 
-    <form method="post" action="{% url 'update_lead_stage' lead.pk %}" class="so-action">
+    <form method="post" action="{% url 'update_lead_stage' lead.pk %}" class="so-action"
+          data-order="{{ lead.order.order_id }}"
+          onsubmit="return blytzConfirmStageForm(this)">
       {% csrf_token %}
       <input type="hidden" name="next" value="{% url 'lead_detail' lead.pk %}">
       <select name="stage" aria-label="Lead stage" class="so-input" style="width:auto;min-width:11rem">
@@ -78,26 +64,30 @@
         </div>
       </section>
 
-      <section class="so-card" aria-labelledby="ld-time-title">
-        <div class="so-card-head"><h2 id="ld-time-title">Activity timeline</h2></div>
+            <section class="so-card" aria-labelledby="ld-time-title">
+        <div class="so-card-head">
+          <h2 id="ld-time-title">Activity timeline</h2>
+          {% if lead.order %}<span class="tl-oid so-mono">{{ lead.order.order_id }}</span>{% endif %}
+        </div>
         <div class="so-body">
           {% if timeline %}
-          <ol class="so-hist">
-            {% for log in timeline %}
-            <li>
-              <div>
-                <span style="font-weight:600;color:#1a1a1a">{{ log.get_kind_display }}</span>
-                <p class="so-muted">
-                  {% if log.order %}{{ log.order.order_id }}{% endif %}
-                  {% if log.design %}{% if log.order %} · {% endif %}{{ log.design.title }}{% endif %}
+          <ol class="tl">
+            {% for e in timeline %}
+            <li class="tl-item">
+              <span class="tl-dot t-{{ e.type }}" aria-hidden="true"></span>
+              <div class="tl-main">
+                <p class="tl-title"><span class="tl-tag t-{{ e.type }}">{{ e.label }}</span>{{ e.title }}</p>
+                {% if e.detail %}<p class="tl-detail">{{ e.detail }}</p>{% endif %}
+                <p class="tl-meta">
+                  <span class="so-mono">{{ e.order_id }}</span>{% if e.actor %} · {{ e.actor }}{% endif %}
                 </p>
               </div>
-              <time class="so-muted">{{ log.created_at|date:"Y-m-d H:i" }}</time>
+              <time class="tl-time" datetime="{{ e.when|date:'c' }}">{{ e.when|date:"M j, Y" }}<br>{{ e.when|date:"g:i A" }}</time>
             </li>
             {% endfor %}
           </ol>
           {% else %}
-          <p class="so-muted" style="font-size:.85rem">No activity yet.</p>
+          <p class="so-muted" style="font-size:.85rem">No activity recorded for this order yet.</p>
           {% endif %}
         </div>
       </section>
@@ -128,4 +118,3 @@
     </aside>
   </div>
 </section>
-{% endblock %}

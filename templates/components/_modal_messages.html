@@ -1,0 +1,8 @@
+{# Flash messages rendered inside the staff modal (e.g. "Agreed total updated."). #}
+{% if messages %}
+<div class="smx-msgs" role="status">
+  {% for message in messages %}
+  <p class="smx-msg smx-msg--{{ message.level_tag }}">{{ message }}</p>
+  {% endfor %}
+</div>
+{% endif %}

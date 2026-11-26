@@ -53,17 +53,28 @@
 
       {% if next_status %}
         {% if advance_blocked_reason %}
-        <div style="max-width:20rem;text-align:right">
-          {% include "components/button.html" with label=advance_label type="button" variant="primary" disabled=True %}
-          <p class="so-muted" style="margin-top:.4rem">{{ advance_blocked_reason }}</p>
-        </div>
+        {% include "components/button.html" with label=advance_label type="button" variant="primary" id="blocked-advance-btn" %}
+        {% include "components/_confirm_dialog.html" %}
+        <script>
+          (function () {
+            var btn = document.getElementById('blocked-advance-btn');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+              window.blytzConfirm({
+                title: "Can't move {{ order.order_id|escapejs }} to {{ next_status_label|escapejs }} yet",
+                warning: "{{ advance_blocked_reason|escapejs }}",
+                infoOnly: true
+              });
+            });
+          })();
+        </script>
         {% else %}
-        <form method="post"
-              action="{% url 'advance_order_phase' order.order_id %}"
-              {% if production_confirm_message %}onsubmit="return confirm('{{ production_confirm_message|escapejs }}');"{% endif %}>          
+        <form method="post" id="advance-order-form"
+              action="{% url 'advance_order_phase' order.order_id %}">
           {% csrf_token %}
           {% include "components/button.html" with label=advance_label type="submit" variant="primary" %}
         </form>
+        {% include "orders/_advance_confirm.html" %}
         {% endif %}
       {% else %}
         {% include "components/badge.html" with label="Completed" variant="success" %}
@@ -108,7 +119,7 @@
       <section id="so-payments" class="so-card" aria-labelledby="so-pay-title">
         <div class="so-card-head">
           <h2 id="so-pay-title">Payments</h2>
-        </div>
+<a href="{% url 'accounting_detail' order.order_id %}" class="so-link" data-staff-modal="{% url 'accounting_detail' order.order_id %}" data-modal-title="Accounting · {{ order.order_id }}">Record Manual Payment →</a>        </div>
         {% if payments %}
         <ul style="margin:0;padding:0;list-style:none">
           {% for payment in payments %}
@@ -116,7 +127,7 @@
             <div class="so-pay-top">
               <div>
                 <p class="so-pay-ch">
-                  {% if payment.channel %}{{ payment.channel.display_name }}{% else %}Manual{% endif %}
+                  {% if payment.channel %}{{ payment.channel.display_name }}{% else %}Manual Payment{% endif %}
                   {% if payment.is_manual_adjustment %}
                     {% include "components/badge.html" with label="Adjustment" variant="muted" %}
                   {% endif %}

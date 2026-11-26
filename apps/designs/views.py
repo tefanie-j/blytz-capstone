@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.decorators import customer_required
 from apps.orders.models import Order, Payment, PaymentChannel
 from apps.sales.models import Lead
+from apps.sales.stages import sync_lead_stage
 from services.ai_design import AIDesignError, gemini_configured, suggest_design_candidates, vision_configured
 
 from .ai_suggest import (
@@ -294,7 +295,7 @@ def design_submit(request, pk):
                     Lead.objects.create(
                         customer=request.user,
                         order=order,
-                        stage=Lead.Stage.NEW_LEAD,
+                        stage=Lead.Stage.ORDER_CONFIRMED,
                     )
                     ActivityLog.objects.create(
                         customer=request.user,
@@ -308,6 +309,7 @@ def design_submit(request, pk):
                         order=order,
                         kind=ActivityLog.Kind.ORDER_CONFIRMED,
                     )
+                    sync_lead_stage(order)
             break
         except ValidationError as exc:
             if _wants_json(request):

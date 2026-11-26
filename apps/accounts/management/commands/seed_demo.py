@@ -229,13 +229,13 @@ class Command(BaseCommand):
             Lead.Stage.NEW_LEAD,
             Lead.Stage.ORDER_CONFIRMED,
             Lead.Stage.DESIGN_REVIEW,
-            Lead.Stage.APPROVED,
+            Lead.Stage.IN_PRODUCTION,
             Lead.Stage.COMPLETED,
             Lead.Stage.LOST,
             Lead.Stage.DESIGN_REVIEW,
             Lead.Stage.ORDER_CONFIRMED,
             Lead.Stage.NEW_LEAD,
-            Lead.Stage.APPROVED,
+            Lead.Stage.IN_PRODUCTION,
         ]
 
         # First 10 designs get orders (submitted); last 2 stay unsubmitted drafts

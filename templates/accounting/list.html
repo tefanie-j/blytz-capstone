@@ -4,130 +4,305 @@
 {% block title %}Accounting — Blytz{% endblock %}
 
 {% block staff_content %}
-{# Header #}
-<div class="mb-6">
-  <p class="text-xs font-medium uppercase tracking-wider text-text-muted">Staff/Accounting · Finances</p>
-  <h1 class="mt-1 text-2xl font-bold text-text-primary sm:text-3xl">Accounting</h1>
-  <p class="mt-1 text-sm text-text-muted">
-    {% if can_edit %}You can edit agreed totals and adjustments.{% else %}View only — ask an admin for accounting edit access.{% endif %}
-  </p>
+{% include "orders/_staff_list_styles.html" %}
+{% include "orders/_staff_detail_styles.html" %}
+<style>
+  .ac-kpis{display:grid;gap:.85rem;margin-bottom:1.5rem;grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (min-width:1024px){.ac-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .ac-kpi{display:flex;flex-direction:column;gap:.3rem;padding:1rem 1.1rem;border-radius:1rem;background:#fff;
+    border:1px solid #e5e7eb;box-shadow:0 2px 10px rgba(0,0,0,.04);transition:transform .15s,border-color .15s,box-shadow .15s}
+  a.ac-kpi:hover{transform:translateY(-2px);border-color:#D4AF37;box-shadow:0 10px 24px rgba(0,0,0,.08)}
+  .ac-kpi-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b7280}
+  .ac-kpi-value{font-size:1.7rem;font-weight:700;line-height:1.1;color:#000}
+  .ac-kpi-sub{font-size:.76rem;color:#6b7280}
+  .ac-kpi.is-dark{background:linear-gradient(135deg,#0a0a0a,#1c1a12);border-color:#D4AF37}
+  .ac-kpi.is-dark .ac-kpi-label{color:rgba(255,255,255,.7)}
+  .ac-kpi.is-dark .ac-kpi-value{color:#D4AF37}
+  .ac-kpi.is-dark .ac-kpi-sub{color:rgba(255,255,255,.6)}
+  .ac-kpi.is-hot{border-color:#D4AF37;background:#fffbea}
+
+  .ac-export{margin-bottom:1.25rem}
+  .ac-export[hidden]{display:none}
+  .ac-export-body{display:grid;gap:.9rem 1rem;padding:1.1rem;grid-template-columns:repeat(1,minmax(0,1fr))}
+  @media (min-width:700px){.ac-export-body{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}}
+  .ac-check{display:flex;align-items:center;gap:.5rem;min-height:2.4rem;font-size:.85rem;color:#4b5563}
+  .ac-check input{accent-color:#D4AF37;width:1rem;height:1rem}
+  .ac-export-actions{grid-column:1/-1;display:flex;justify-content:flex-end}
+
+  .ac-due{color:#c2410c;font-weight:700}
+  .ac-ok{color:#6b7280}
+  .ac-sum{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.15rem;cursor:pointer;
+    list-style:none;background:#f9fafb;border-bottom:1px solid #e5e7eb}
+  .ac-sum::-webkit-details-marker{display:none}
+  .ac-sum h2{margin:0;font-size:1rem;font-weight:600;color:#000}
+  .ac-sum span{font-size:.8rem;color:#6b7280;transition:transform .15s}
+  details[open] > .ac-sum span{transform:rotate(180deg)}
+  .ac-charts{display:grid;gap:1.25rem;padding:1.1rem}
+  @media (min-width:1024px){.ac-charts-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  /* List / Diagrams switcher (same look as Sales Pipeline) */
+  .sp-tabs{display:inline-flex;padding:.25rem;border-radius:9999px;background:#f3f4f6;border:1px solid #e5e7eb}
+  .sp-tab{padding:.45rem 1.1rem;border-radius:9999px;font-size:.8rem;font-weight:600;color:#6b7280;transition:background .15s,color .15s}
+  .sp-tab:hover{color:#1a1a1a}
+  .sp-tab.is-on{background:#1a1a1a;color:#fff}
+</style>
+
+{# ── Header ─────────────────────────────────────────── #}
+<header class="sp-head">
+  <div>
+    <p class="sp-eyebrow">Staff · Accounting</p>
+    <h1 class="sp-h1">Accounting</h1>
+    <p class="sp-sub">
+      {% if can_edit %}You can edit agreed totals and record manual payments.{% else %}View only. Ask an admin for accounting edit access.{% endif %}
+    </p>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.75rem">
+    <nav class="sp-tabs" aria-label="Accounting views">
+      <a href="?tab=list" class="sp-tab {% if tab != 'charts' %}is-on{% endif %}">List</a>
+      <a href="?tab=charts" class="sp-tab {% if tab == 'charts' %}is-on{% endif %}">Diagrams</a>
+    </nav>
+    <button type="button" class="sp-action" id="ac-export-toggle" aria-expanded="false" aria-controls="ac-export">
+      Export CSV
+    </button>
+  </div>
+</header>
+
+{# ── Export (opens on demand) ───────────────────────── #}
+<section id="ac-export" class="sp-card ac-export" hidden aria-label="Export orders as CSV">
+  <form method="get" action="{% url 'accounting_export_csv' %}" class="ac-export-body">
+    <div>
+      <label for="export-status" class="sp-label">Job status</label>
+      <select name="status" id="export-status" class="sp-input">
+        <option value="">All phases</option>
+        {% for value, label in export_status_choices %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="export-date-from" class="sp-label">From date</label>
+      <input type="date" name="date_from" id="export-date-from" class="sp-input">
+    </div>
+    <div>
+      <label for="export-date-to" class="sp-label">To date</label>
+      <input type="date" name="date_to" id="export-date-to" class="sp-input">
+    </div>
+    <label class="ac-check">
+      <input type="checkbox" name="pending_review" id="export-pending-review" value="1">
+      Payment awaiting review
+    </label>
+    <div class="ac-export-actions">
+      <button type="submit" class="sp-btn">Download CSV</button>
+    </div>
+  </form>
+</section>
+
+{# ── Summary cards ──────────────────────────────────── #}
+<div class="ac-kpis">
+  <div class="ac-kpi is-dark">
+    <span class="ac-kpi-label">Total collected</span>
+    <span class="ac-kpi-value">₱{{ total_collected|floatformat:2 }}</span>
+    <span class="ac-kpi-sub">Accepted payments only</span>
+  </div>
+  <div class="ac-kpi">
+    <span class="ac-kpi-label">Total outstanding</span>
+    <span class="ac-kpi-value">₱{{ total_outstanding|floatformat:2 }}</span>
+    <span class="ac-kpi-sub">Still to collect</span>
+  </div>
+  <a href="{% url 'jobs_pipeline' %}?pending_review=1" class="ac-kpi {% if staff_pending_payments_count %}is-hot{% endif %}">
+    <span class="ac-kpi-label">Awaiting review</span>
+    <span class="ac-kpi-value">{{ staff_pending_payments_count|default:0 }}</span>
+    <span class="ac-kpi-sub">Open the review queue →</span>
+  </a>
+  <div class="ac-kpi">
+    <span class="ac-kpi-label">Orders</span>
+    <span class="ac-kpi-value">{{ orders|length }}</span>
+    <span class="ac-kpi-sub">All phases</span>
+  </div>
+</div>
+{% if tab != 'charts' %}
+{# ── Orders ─────────────────────────────────────────── #}
+<div class="sp-toolbar">
+  <div class="sp-chips" role="group" aria-label="Filter by payment status">
+    <button type="button" class="sp-chip is-on" data-filter="all" aria-pressed="true">
+      All <span class="n" data-count="all">0</span>
+    </button>
+    <button type="button" class="sp-chip" data-filter="out" aria-pressed="false">
+      <span class="sp-dot" style="background:#dc2626"></span>Outstanding <span class="n" data-count="out">0</span>
+    </button>
+    <button type="button" class="sp-chip" data-filter="down" aria-pressed="false">
+      <span class="sp-dot" style="background:#D4AF37"></span>Downpayment Paid <span class="n" data-count="down">0</span>
+    </button>
+    <button type="button" class="sp-chip" data-filter="paid" aria-pressed="false">
+      <span class="sp-dot" style="background:#16a34a"></span>Fully Paid <span class="n" data-count="paid">0</span>
+    </button>
+    <button type="button" class="sp-chip" data-filter="review" aria-pressed="false">
+      <span class="sp-dot" style="background:#2563eb"></span>Awaiting review <span class="n" data-count="review">0</span>
+    </button>
+  </div>
+  <label class="sp-search">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <input id="sp-search" type="search" placeholder="Search order, customer or design" aria-label="Search orders">
+  </label>
 </div>
 
-{# Export filters #}
-<form method="get" action="{% url 'accounting_export_csv' %}"
-      class="mb-6 blytz-panel p-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-  <div class="min-w-[10rem] flex-1">
-    <label for="export-status" class="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Job status</label>
-    <select name="status" id="export-status"
-            class="block w-full rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-sm text-text-primary focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors">
-      <option value="">All phases</option>
-      {% for value, label in export_status_choices %}
-      <option value="{{ value }}">{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="min-w-[9rem] flex-1">
-    <label for="export-date-from" class="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">From date</label>
-    <input type="date" name="date_from" id="export-date-from"
-           class="block w-full rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-sm text-text-primary focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors">
-  </div>
-  <div class="min-w-[9rem] flex-1">
-    <label for="export-date-to" class="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">To date</label>
-    <input type="date" name="date_to" id="export-date-to"
-           class="block w-full rounded-lg border border-border bg-bg-elevated px-3 py-2.5 text-sm text-text-primary focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors">
-  </div>
-  <div class="flex min-h-11 items-center gap-2 pb-0.5">
-    <input type="checkbox" name="pending_review" id="export-pending-review" value="1"
-           class="h-4 w-4 rounded border-border bg-bg-elevated text-accent focus:ring-accent">
-    <label for="export-pending-review" class="text-sm text-text-muted">Payment awaiting review</label>
-  </div>
-  <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-full border border-text-primary px-6 py-2.5 text-sm font-semibold text-text-primary hover:bg-bg-elevated transition-colors">
-    Export CSV
-  </button>
-</form>
-
-{# Stats #}
-<div class="grid gap-4 sm:grid-cols-2 mb-6">
-  <div class="blytz-kpi">
-    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-success/10 border border-success/30">
-      <svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-      </svg>
-    </div>
-    <div class="flex-1">
-      <p class="text-xs text-text-muted mb-1">Total collected</p>
-      <p class="text-2xl font-bold text-text-primary">{{ total_collected }}</p>
-    </div>
-  </div>
-  <div class="blytz-kpi">
-    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-accent/10 border border-accent/30">
-      <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-      </svg>
-    </div>
-    <div class="flex-1">
-      <p class="text-xs text-text-muted mb-1">Total outstanding</p>
-      <p class="text-2xl font-bold text-accent">{{ total_outstanding }}</p>
-    </div>
-  </div>
-</div>
-
-{# Charts data #}
-{{ collected_chart|json_script:"chart-collected-vs-outstanding" }}
-{{ collections_chart|json_script:"chart-collections-over-time" }}
-{{ channel_chart|json_script:"chart-payments-by-channel" }}
-
-{# Charts #}
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
-  {% include "components/chart_panel.html" with title="Collected vs outstanding" script_id="chart-collected-vs-outstanding" chart_type="doughnut" rows=collected_chart.rows empty=collected_chart.empty %}
-  {% include "components/chart_panel.html" with title="Payments by channel" script_id="chart-payments-by-channel" chart_type="doughnut" rows=channel_chart.rows empty=channel_chart.empty %}
-</div>
-<div class="mb-6">
-  {% include "components/chart_panel.html" with title="Collections over time (30 days)" script_id="chart-collections-over-time" chart_type="line" rows=collections_chart.rows empty=collections_chart.empty %}
-</div>
-
-{# Orders table #}
-<div class="blytz-panel overflow-x-auto">
-  <table class="w-full blytz-table md:min-w-[48rem]">
+<section class="sp-card" aria-label="Orders">
+  <table class="sp-table">
     <thead>
       <tr>
-        <th scope="col" class="text-text-primary font-semibold">Order</th>
-        <th scope="col" class="text-text-primary font-semibold">Customer</th>
-        <th scope="col" class="text-text-primary font-semibold">Agreed</th>
-        <th scope="col" class="text-text-primary font-semibold">Paid</th>
-        <th scope="col" class="text-text-primary font-semibold">Balance</th>
-        <th scope="col" class="text-text-primary font-semibold">Status</t
+        <th scope="col">Order</th>
+        <th scope="col">Customer</th>
+        <th scope="col">Agreed total</th>
+        <th scope="col">Received</th>
+        <th scope="col">Remaining</th>
+        <th scope="col">Payment</th>
+        <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
-    {% for order in orders %}
-      <tr>
-        <td data-label="Order">
-          <a href="{% url 'accounting_detail' order.order_id %}" class="font-mono font-bold text-black hover:text-accent transition-colors">{{ order.order_id }}</a>
+      {% for order in orders %}
+      <tr class="sp-row"
+          data-status="{% if order.payment_status == 'Fully Paid' %}paid{% elif order.payment_status == 'Downpayment Paid' %}down{% else %}out{% endif %}"
+          data-review="{% if order.pending_payment %}1{% else %}0{% endif %}"
+          data-search="{{ order.order_id|lower }} {{ order.customer.get_full_name|lower }} {{ order.customer.email|lower }} {{ order.design.title|lower }}">
+        <td class="sp-first">
+          <a href="{% url 'accounting_detail' order.order_id %}" class="sp-mono sp-order" data-staff-modal="{% url 'accounting_detail' order.order_id %}" data-modal-title="Accounting · {{ order.order_id }}">{{ order.order_id }}</a>
+          <span class="sp-muted">{{ order.design.title|default:"Custom design" }}</span>
         </td>
-        <td data-label="Customer" class="text-gray-800 font-medium">{{ order.customer.get_full_name }}</td>
-        <td data-label="Agreed" class="font-mono text-gray-700">{% if order.agreed_total %}₱{{ order.agreed_total }}{% else %}—{% endif %}</td>
-        <td data-label="Paid" class="font-mono text-gray-700">₱{{ order.total_paid }}</td>
-        <td data-label="Balance" class="font-mono text-gray-700 {% if order.balance and order.balance > 0 %}text-orange-600 font-semibold{% endif %}">{% if order.balance is not None %}₱{{ order.balance }}{% else %}—{% endif %}</td>
-        <td data-label="Status">
-          <div class="flex flex-col items-start gap-1">
-          {% include "partials/payment_pill.html" %}
-          {% if order.pending_payment %}
-            <span class="blytz-pill blytz-pill--blue">Payment awaiting review</span>
-          {% endif %}
+        <td data-label="Customer">
+          <div>
+            <span class="sp-name" style="font-weight:600">{{ order.customer.get_full_name|default:order.customer.email }}</span>
+            <span class="sp-muted">{{ order.customer.email }}</span>
           </div>
         </td>
-      </tr>
-      {% empty %}
-      <tr class="md:table-row">
-        <td colspan="6" class="text-center py-12 text-text-subtle" data-label="">
-          No orders yet. Orders appear here after customers submit designs.
+        <td data-label="Agreed total">
+          <div>
+            {% if order.agreed_total is not None %}
+              <span class="sp-mono" style="font-weight:600">₱{{ order.agreed_total|floatformat:2 }}</span>
+              {% if order.agreed_downpayment is not None %}
+              <span class="sp-muted">Down ₱{{ order.agreed_downpayment|floatformat:2 }}</span>
+              {% endif %}
+            {% else %}
+              <span class="sp-muted">Not set</span>
+            {% endif %}
+          </div>
+        </td>
+        <td data-label="Received">
+          <div>
+            <span class="sp-mono" style="font-weight:600">₱{{ order.total_paid|floatformat:2 }}</span>
+            <span class="sp-muted">
+              Down ₱{{ order.downpayment_paid|floatformat:2 }}{% if order.balance_due is not None %} · Final ₱{{ order.balance_paid|floatformat:2 }}{% endif %}
+            </span>
+          </div>
+        </td>
+        <td data-label="Remaining" class="sp-mono">
+          {% with rem=order.outstanding_amount %}
+            {% if rem is None %}—{% elif rem > 0 %}<span class="ac-due">₱{{ rem|floatformat:2 }}</span>{% else %}<span class="ac-ok">₱0.00</span>{% endif %}
+          {% endwith %}
+        </td>
+        <td data-label="Payment">
+          <div class="sp-stack">
+            {% include "partials/payment_pill.html" %}
+            {% include "partials/payment_review_badge.html" %}
+          </div>
+        </td>
+        <td style="text-align:right">
+          <a href="{% url 'accounting_detail' order.order_id %}" class="sp-action" data-staff-modal="{% url 'accounting_detail' order.order_id %}" data-modal-title="Accounting · {{ order.order_id }}">Open</a>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+
+  <div id="sp-empty" class="sp-empty" hidden>
+    <span class="sp-empty-icon" aria-hidden="true">?</span>
+    <strong>No orders match</strong>
+    <span>Try a different filter or clear the search.</span>
+  </div>
+  <div id="sp-none" class="sp-empty" hidden>
+    <span class="sp-empty-icon" aria-hidden="true">✓</span>
+    <strong>No orders yet</strong>
+    <span>Orders appear here after customers submit designs.</span>
+  </div>
+</section>
+
+{% else %}
+{# ── Diagrams ───────────────────────────────────────── #}
+{{ collected_chart|json_script:"chart-collected-vs-outstanding" }}
+{{ collections_chart|json_script:"chart-collections-over-time" }}
+{{ channel_chart|json_script:"chart-payments-by-channel" }}
+
+<div class="ac-charts ac-charts-2" style="padding:0">
+  {% include "components/chart_panel.html" with title="Collected vs outstanding" script_id="chart-collected-vs-outstanding" chart_type="doughnut" rows=collected_chart.rows empty=collected_chart.empty %}
+  {% include "components/chart_panel.html" with title="Payments by channel" script_id="chart-payments-by-channel" chart_type="doughnut" rows=channel_chart.rows empty=channel_chart.empty %}
 </div>
+<div style="margin-top:1.25rem">
+  {% include "components/chart_panel.html" with title="Collections over time (30 days)" script_id="chart-collections-over-time" chart_type="line" rows=collections_chart.rows empty=collections_chart.empty %}
+</div>
+{% endif %}
+
+<script>
+  (function () {
+    // Export panel toggle
+    var toggle = document.getElementById("ac-export-toggle");
+    var panel = document.getElementById("ac-export");
+    if (toggle && panel) {
+      toggle.addEventListener("click", function () {
+        var open = panel.hidden;
+        panel.hidden = !open;
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
+
+    // Filter chips + search
+    var rows = [].slice.call(document.querySelectorAll(".sp-row"));
+    var chips = [].slice.call(document.querySelectorAll("[data-filter]"));
+    var search = document.getElementById("sp-search");
+    var empty = document.getElementById("sp-empty");
+    var none = document.getElementById("sp-none");
+    var active = "all";
+
+    function count(key) {
+      return rows.filter(function (r) {
+        if (key === "all") return true;
+        if (key === "review") return r.dataset.review === "1";
+        return r.dataset.status === key;
+      }).length;
+    }
+    ["all", "out", "down", "paid", "review"].forEach(function (k) {
+      var el = document.querySelector('[data-count="' + k + '"]');
+      if (el) el.textContent = count(k);
+    });
+
+    function matches(r) {
+      if (active === "all") return true;
+      if (active === "review") return r.dataset.review === "1";
+      return r.dataset.status === active;
+    }
+
+    function apply() {
+      var q = (search && search.value || "").trim().toLowerCase();
+      var shown = 0;
+      rows.forEach(function (r) {
+        var ok = matches(r) && (!q || r.dataset.search.indexOf(q) > -1);
+        r.hidden = !ok;
+        if (ok) shown++;
+      });
+      chips.forEach(function (c) {
+        var on = c.dataset.filter === active;
+        c.classList.toggle("is-on", on);
+        c.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      if (none) none.hidden = rows.length !== 0;
+      if (empty) empty.hidden = rows.length === 0 || shown !== 0;
+    }
+
+    chips.forEach(function (c) {
+      c.addEventListener("click", function () { active = c.dataset.filter; apply(); });
+    });
+    if (search) search.addEventListener("input", apply);
+    apply();
+  })();
+</script>
 {% endblock %}
 
 {% block extra_js %}

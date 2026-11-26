@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.accounts.decorators import admin_required
-
+from apps.core.http import render_modal
 User = get_user_model()
 
 
@@ -61,12 +61,12 @@ def user_create_staff(request):
         )
         messages.success(request, f"Staff account created for {user.email}.")
         return redirect("user_manage_list")
-    return render(
+    return render_modal(
         request,
-        "accounts/user_create.html",
+        "accounts/_user_create.html",
         {"form": form},
+        "user_manage_list",
     )
-
 
 @admin_required
 def user_edit(request, pk):
@@ -118,8 +118,9 @@ def user_edit(request, pk):
             messages.success(request, f"Updated {target.email}.")
             return redirect("user_manage_list")
 
-    return render(
+    return render_modal(
         request,
-        "accounts/user_edit.html",
+        "accounts/_user_edit.html",
         {"form": form, "target": target},
+        "user_manage_list",
     )

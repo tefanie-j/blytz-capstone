@@ -7,7 +7,7 @@ class Lead(models.Model):
         NEW_LEAD = "new_lead", "New Lead"
         ORDER_CONFIRMED = "order_confirmed", "Order Confirmed"
         DESIGN_REVIEW = "design_review", "Design Review"
-        APPROVED = "approved", "Approved"
+        IN_PRODUCTION = "in_production", "In Production"
         COMPLETED = "completed", "Completed"
         LOST = "lost", "Lost"
 

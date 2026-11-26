@@ -3,7 +3,185 @@
 {% block title %}Sales Pipeline — Blytz{% endblock %}
 
 {% block staff_content %}
+{% include "orders/_staff_detail_styles.html" %}
+{% include "components/_confirm_dialog.html" %}
 <style>
+
+/* Updated Sales Pipeline table */
+
+.sp-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sp-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: collapse;
+}
+
+.sp-table th {
+  padding: .85rem .9rem;
+  text-align: left;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.sp-table td {
+  padding: .9rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  font-size: .83rem;
+  color: #1a1a1a;
+}
+
+.sp-row:last-child td {
+  border-bottom: 0;
+}
+
+.sp-row:hover {
+  background: #fafafa;
+}
+
+.sp-order {
+  display: inline-block;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: .8rem;
+  font-weight: 700;
+  color: #8a6a00;
+  white-space: nowrap;
+}
+
+.sp-order:hover {
+  text-decoration: underline;
+}
+
+.sp-person {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  min-width: 175px;
+}
+
+.sp-avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-size: .8rem;
+  font-weight: 700;
+}
+
+.sp-name {
+  display: block;
+  font-weight: 650;
+  color: #1a1a1a;
+}
+
+.sp-name:hover {
+  color: #8a6a00;
+}
+
+.sp-muted {
+  display: block;
+  margin-top: .2rem;
+  font-size: .73rem;
+  color: #6b7280;
+}
+
+.sp-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .4rem;
+  min-width: 110px;
+}
+
+.sp-select {
+  min-width: 145px;
+  max-width: 170px;
+  padding: .48rem 1.8rem .48rem .75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: .55rem;
+  font-size: .76rem;
+  font-weight: 650;
+  cursor: pointer;
+  background-color: #fff;
+  color: #374151;
+}
+
+.sp-select:focus {
+  outline: none;
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212,175,55,.15);
+}
+
+.sp-date {
+  min-width: 110px;
+  white-space: nowrap;
+}
+
+.sp-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .42rem .85rem;
+  border: 1px solid #D4AF37;
+  border-radius: .5rem;
+  color: #8a6a00;
+  font-size: .75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.sp-action:hover {
+  background: rgba(212,175,55,.12);
+}
+
+.sp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.sp-empty[hidden],
+.sp-row[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .sp-table-wrap {
+    overflow-x: auto;
+  }
+
+  .sp-table {
+    min-width: 1100px;
+  }
+
+  .sp-toolbar {
+    align-items: stretch;
+  }
+
+  .sp-search,
+  .sp-search input {
+    width: 100%;
+  }
+}
+
   /* Header + tabs */
   .sp-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}
   .sp-eyebrow{margin:0;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7280}
@@ -27,7 +205,7 @@
   .sp-dot.s-new_lead{background:#2563eb}
   .sp-dot.s-order_confirmed{background:#6b7280}
   .sp-dot.s-design_review{background:#ea580c}
-  .sp-dot.s-approved{background:#D4AF37}
+  .sp-dot.s-in_production{background:#7c3aed}
   .sp-dot.s-completed{background:#16a34a}
   .sp-dot.s-lost{background:#dc2626}
   .sp-search{position:relative}
@@ -71,7 +249,7 @@
   .sp-select.s-new_lead{background-color:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
   .sp-select.s-order_confirmed{background-color:#f3f4f6;color:#374151;border-color:#e5e7eb}
   .sp-select.s-design_review{background-color:#fff7ed;color:#c2410c;border-color:#fed7aa}
-  .sp-select.s-approved{background-color:#fffbea;color:#8a6a00;border-color:#ecd98a}
+  .sp-select.s-in_production{background-color:#f5f3ff;color:#6d28d9;border-color:#ddd6fe}
   .sp-select.s-completed{background-color:#e8f5e9;color:#166534;border-color:#bfe3c6}
   .sp-select.s-lost{background-color:#fef2f2;color:#b91c1c;border-color:#fecaca}
 
@@ -164,156 +342,402 @@
   {% endif %}
 </section>
 
+
 {% else %}
-{# ── Leads ───────────────────────────────────────────────── #}
+{# ── Sales Pipeline / Orders ─────────────────────────────── #}
+
 <div class="sp-toolbar">
-  <div class="sp-chips" role="group" aria-label="Filter by stage">
-    <button type="button" class="sp-chip is-on" data-filter="all" aria-pressed="true">
-      All <span class="n" data-all-count>0</span>
+
+  <div class="sp-chips" role="group" aria-label="Filter by sales stage">
+
+    <button type="button" class="sp-chip is-on"
+            data-filter="all" aria-pressed="true">
+      All Orders <span class="n" data-all-count>0</span>
     </button>
+
     {% for stage in stages %}
-    <button type="button" class="sp-chip" data-filter="{{ stage.value }}" aria-pressed="false">
+    <button type="button" class="sp-chip"
+            data-filter="{{ stage.value }}" aria-pressed="false">
+
       <span class="sp-dot s-{{ stage.value }}"></span>
-      {{ stage.label }} <span class="n">{{ stage.leads|length }}</span>
+      {{ stage.label }}
+      <span class="n">{{ stage.leads|length }}</span>
+
     </button>
     {% endfor %}
+
   </div>
+
   <label class="sp-search">
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-    <input id="sp-search" type="search" placeholder="Search customer, order or design" aria-label="Search leads">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"
+         aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+
+    <input id="sp-search"
+           type="search"
+           placeholder="Search order, customer or design"
+           aria-label="Search orders">
   </label>
+
 </div>
 
-<section class="sp-card" aria-label="Leads">
-  <table class="sp-table">
-    <thead>
-      <tr>
-        <th>Customer</th>
-        <th>Order</th>
-        <th>Stage</th>
-        <th>Job &amp; payment</th>
-        <th>Added</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for stage in stages %}
-      {% for lead in stage.leads %}
-      <tr class="sp-row"
-          data-stage="{{ stage.value }}"
-          data-search="{{ lead.customer.get_full_name|lower }} {{ lead.customer.email|lower }} {{ lead.order.order_id|lower }} {{ lead.order.design.title|lower }}">
-        <td class="sp-first">
-          <div class="sp-person">
-            <span class="sp-avatar" aria-hidden="true">{{ lead.customer.get_short_name|default:lead.customer.email|first|upper }}</span>
-            <div style="min-width:0">
-              <a href="{% url 'lead_detail' lead.pk %}" class="sp-name">{{ lead.customer.get_full_name|default:lead.customer.email }}</a>
-              <span class="sp-muted">{{ lead.customer.email }}</span>
-            </div>
-          </div>
-        </td>
+<section class="sp-card" aria-label="Sales Pipeline orders">
 
-        <td data-label="Order">
-          <div>
-            {% if lead.order %}
-            <a href="{% url 'staff_order_detail' lead.order.order_id %}" class="sp-mono sp-order">{{ lead.order.order_id }}</a>
-            <span class="sp-muted">{{ lead.order.design.title|default:"Custom design" }}</span>
-            {% else %}—{% endif %}
-          </div>
-        </td>
+  <div class="sp-table-wrap">
 
-        <td data-label="Stage">
-          <form method="post" action="{% url 'update_lead_stage' lead.pk %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{% url 'sales_pipeline' %}">
-            <select name="stage" class="sp-select s-{{ lead.stage }}"
-                    aria-label="Stage for {{ lead.order.order_id }}"
-                    onchange="this.form.submit()">
-              {% for value, label in stage_choices %}
-              <option value="{{ value }}" {% if lead.stage == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </form>
-        </td>
+    <table class="sp-table">
 
-        <td data-label="Job / pay">
-          {% if lead.order %}
-          <div class="sp-stack">
-            {% include "partials/status_badge.html" with status=lead.order.status %}
-            {% include "partials/payment_pill.html" with order=lead.order %}
-          </div>
-          {% else %}—{% endif %}
-        </td>
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Customer</th>
+          <th>Order Details</th>
+          <th>Sales Stage</th>
+          <th>Job &amp; Payment</th>
+          <th>Date Added</th>
+          <th>Last Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
 
-        <td data-label="Added">
-          <div data-tip="{{ lead.created_at|date:'M j, Y g:i A' }}">
-            <span class="sp-mono" style="font-size:.78rem">{{ lead.created_at|date:"M j, Y" }}</span>
-            <span class="sp-muted">{{ lead.created_at|timesince }} ago</span>
-          </div>
-        </td>
+      <tbody>
 
-        <td data-label="" style="text-align:right">
-          <a href="{% url 'lead_detail' lead.pk %}" class="sp-action">View</a>
-        </td>
-      </tr>
-      {% endfor %}
-      {% endfor %}
-    </tbody>
-  </table>
+        {% for stage in stages %}
+          {% for lead in stage.leads %}
+
+          <tr class="sp-row"
+              data-stage="{{ stage.value }}"
+              data-search="{{ lead.customer.get_full_name|lower }} {{ lead.customer.email|lower }} {{ lead.order.order_id|lower }} {{ lead.order.design.title|lower }}">
+
+            {# Order ID #}
+            <td data-label="Order ID">
+
+              {% if lead.order %}
+                <a href="{% url 'staff_order_detail' lead.order.order_id %}"
+                   class="sp-order">
+                  {{ lead.order.order_id }}
+                </a>
+              {% else %}
+                <span class="sp-muted">No order linked</span>
+              {% endif %}
+
+            </td>
+
+            {# Customer #}
+            <td data-label="Customer" class="sp-first">
+
+              <div class="sp-person">
+
+                <span class="sp-avatar" aria-hidden="true">
+                  {{ lead.customer.get_short_name|default:lead.customer.email|first|upper }}
+                </span>
+
+                <div style="min-width:0">
+
+                  <a href="{% url 'lead_detail' lead.pk %}"
+                     class="sp-name"
+                     data-staff-modal="{% url 'lead_detail' lead.pk %}"
+                     data-modal-title="Lead · {{ lead.customer.get_full_name|default:lead.customer.email }}">
+                    {{ lead.customer.get_full_name|default:lead.customer.email }}
+                  </a>
+
+                  <span class="sp-muted">
+                    {{ lead.customer.email }}
+                  </span>
+
+                  {% if lead.customer.phone %}
+                  <span class="sp-muted">
+                    {{ lead.customer.phone }}
+                  </span>
+                  {% endif %}
+
+                </div>
+
+              </div>
+
+            </td>
+
+            {# Order Details #}
+            <td data-label="Order Details">
+
+              {% if lead.order %}
+
+                <div>
+                  <span class="sp-name">
+                    {{ lead.order.design.title|default:"Custom Design" }}
+                  </span>
+
+                  <span class="sp-muted">
+                    {{ lead.order.design.garment_template|default:"—"|title }}
+                    ·
+                    {{ lead.order.design.garment_color|default:"—"|title }}
+                  </span>
+                </div>
+
+              {% else %}
+
+                <span class="sp-muted">—</span>
+
+              {% endif %}
+
+            </td>
+
+            {# Sales Stage Dropdown #}
+            <td data-label="Sales Stage">
+
+              <form method="post"
+                    action="{% url 'update_lead_stage' lead.pk %}"
+                    data-order="{{ lead.order.order_id }}">
+
+                {% csrf_token %}
+
+                <input type="hidden"
+                       name="next"
+                       value="{% url 'sales_pipeline' %}">
+
+                <select name="stage"
+                        class="sp-select s-{{ lead.stage }}"
+                        aria-label="Sales stage"
+                        onchange="blytzConfirmStageForm(this.form)">
+
+                  {% for value, label in stage_choices %}
+                    <option value="{{ value }}"
+                      {% if lead.stage == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+
+                </select>
+
+              </form>
+
+            </td>
+
+            {# Job & Payment #}
+            <td data-label="Job & Payment">
+
+              {% if lead.order %}
+
+                <div class="sp-stack">
+
+                  {% include "partials/status_badge.html" with status=lead.order.status %}
+
+                  {% include "partials/payment_pill.html" with order=lead.order %}
+
+                </div>
+
+              {% else %}
+
+                <span class="sp-muted">—</span>
+
+              {% endif %}
+
+            </td>
+
+            {# Date Added #}
+            <td data-label="Date Added">
+
+              <div class="sp-date">
+
+                <span class="sp-mono">
+                  {{ lead.created_at|date:"M j, Y" }}
+                </span>
+
+                <span class="sp-muted">
+                  {{ lead.created_at|date:"g:i A" }}
+                </span>
+
+              </div>
+
+            </td>
+
+            {# Last Updated #}
+            <td data-label="Last Updated">
+
+              <div class="sp-date">
+
+                {% if lead.updated_at %}
+
+                  <span class="sp-mono">
+                    {{ lead.updated_at|date:"M j, Y" }}
+                  </span>
+
+                  <span class="sp-muted">
+                    {{ lead.updated_at|date:"g:i A" }}
+                  </span>
+
+                {% elif lead.order.updated_at %}
+
+                  <span class="sp-mono">
+                    {{ lead.order.updated_at|date:"M j, Y" }}
+                  </span>
+
+                  <span class="sp-muted">
+                    {{ lead.order.updated_at|date:"g:i A" }}
+                  </span>
+
+                {% else %}
+
+                  <span class="sp-mono">
+                    {{ lead.created_at|date:"M j, Y" }}
+                  </span>
+
+                  <span class="sp-muted">
+                    {{ lead.created_at|date:"g:i A" }}
+                  </span>
+
+                {% endif %}
+
+              </div>
+
+            </td>
+
+            {# Actions #}
+            <td data-label="Actions">
+
+              <a href="{% url 'lead_detail' lead.pk %}"
+                 class="sp-action"
+                 data-staff-modal="{% url 'lead_detail' lead.pk %}"
+                 data-modal-title="Lead · {{ lead.customer.get_full_name|default:lead.customer.email }}">
+                View
+              </a>
+
+            </td>
+
+          </tr>
+
+          {% endfor %}
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+  {# Empty states #}
 
   <div id="sp-empty" class="sp-empty" hidden>
-    <span class="sp-empty-icon" aria-hidden="true">?</span>
-    <strong>No leads match</strong>
-    <span>Try a different stage or clear the search.</span>
+    <span class="sp-empty-icon">?</span>
+    <strong>No orders match</strong>
+    <span>Try a different stage or search term.</span>
   </div>
+
   <div id="sp-none" class="sp-empty" hidden>
-    <span class="sp-empty-icon" aria-hidden="true">✓</span>
-    <strong>No leads yet</strong>
-    <span>Leads appear here as soon as customers submit a design.</span>
+    <span class="sp-empty-icon">✓</span>
+    <strong>No orders yet</strong>
+    <span>Orders will appear here when customers submit their designs.</span>
   </div>
+
 </section>
 
 <script>
-  (function () {
-    var rows = [].slice.call(document.querySelectorAll(".sp-row"));
-    var chips = [].slice.call(document.querySelectorAll("[data-filter]"));
-    var search = document.getElementById("sp-search");
-    var empty = document.getElementById("sp-empty");
-    var none = document.getElementById("sp-none");
-    var allCount = document.querySelector("[data-all-count]");
-    var active = "all";
 
-    if (allCount) allCount.textContent = rows.length;
-    try { active = sessionStorage.getItem("sp-filter") || "all"; } catch (e) {}
-    if (!chips.some(function (c) { return c.dataset.filter === active; })) active = "all";
+(function () {
 
-    function apply() {
-      var q = (search && search.value || "").trim().toLowerCase();
-      var shown = 0;
-      rows.forEach(function (r) {
-        var ok = (active === "all" || r.dataset.stage === active) &&
-                 (!q || r.dataset.search.indexOf(q) > -1);
-        r.hidden = !ok;
-        if (ok) shown++;
-      });
-      chips.forEach(function (c) {
-        var on = c.dataset.filter === active;
-        c.classList.toggle("is-on", on);
-        c.setAttribute("aria-pressed", on ? "true" : "false");
-      });
-      if (none) none.hidden = rows.length !== 0;
-      if (empty) empty.hidden = rows.length === 0 || shown !== 0;
-    }
+  var rows = [].slice.call(
+    document.querySelectorAll(".sp-row")
+  );
+
+  var chips = [].slice.call(
+    document.querySelectorAll("[data-filter]")
+  );
+
+  var search = document.getElementById("sp-search");
+  var empty = document.getElementById("sp-empty");
+  var none = document.getElementById("sp-none");
+  var allCount = document.querySelector("[data-all-count]");
+
+  var active = "all";
+
+  if (allCount) {
+    allCount.textContent = rows.length;
+  }
+
+  try {
+    active = sessionStorage.getItem("sp-filter") || "all";
+  } catch (e) {}
+
+  if (!chips.some(function (c) {
+    return c.dataset.filter === active;
+  })) {
+    active = "all";
+  }
+
+  function apply() {
+
+    var q = (search && search.value || "")
+      .trim()
+      .toLowerCase();
+
+    var shown = 0;
+
+    rows.forEach(function (r) {
+
+      var matchesStage =
+        active === "all" || r.dataset.stage === active;
+
+      var matchesSearch =
+        !q || r.dataset.search.indexOf(q) > -1;
+
+      var visible = matchesStage && matchesSearch;
+
+      r.hidden = !visible;
+
+      if (visible) shown++;
+
+    });
 
     chips.forEach(function (c) {
-      c.addEventListener("click", function () {
-        active = c.dataset.filter;
-        try { sessionStorage.setItem("sp-filter", active); } catch (e) {}
-        apply();
-      });
+
+      var on = c.dataset.filter === active;
+
+      c.classList.toggle("is-on", on);
+
+      c.setAttribute(
+        "aria-pressed",
+        on ? "true" : "false"
+      );
+
     });
-    if (search) search.addEventListener("input", apply);
-    apply();
-  })();
+
+    if (none) {
+      none.hidden = rows.length !== 0;
+    }
+
+    if (empty) {
+      empty.hidden = rows.length === 0 || shown !== 0;
+    }
+
+  }
+
+  chips.forEach(function (c) {
+
+    c.addEventListener("click", function () {
+
+      active = c.dataset.filter;
+
+      try {
+        sessionStorage.setItem("sp-filter", active);
+      } catch (e) {}
+
+      apply();
+
+    });
+
+  });
+
+  if (search) {
+    search.addEventListener("input", apply);
+  }
+
+  apply();
+
+})();
 </script>
+
 {% endif %}
 {% endblock %}

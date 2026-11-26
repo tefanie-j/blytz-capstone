@@ -1,3 +1,4 @@
+from apps.sales.stages import sync_lead_stage
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -50,6 +51,25 @@ JOB_STEPS = [
     {"label": "Production", "description": "In progress"},
     {"label": "Completed", "description": "Done"},
 ]
+# Plain-language meaning of each job status, shown in the "move to..." confirmation.
+STATUS_MEANINGS = {
+    Order.Status.JOB_REQUEST: (
+        "The customer has submitted their design. The shop reviews it, agrees on "
+        "the price, and waits for the downpayment."
+    ),
+    Order.Status.PENDING_EDIT: (
+        "The downpayment is in. The shop prepares the final design, and the "
+        "customer reviews and approves it before production starts."
+    ),
+    Order.Status.PRODUCTION: (
+        "The design is settled and the item is being made. The final balance is "
+        "requested and paid during this stage."
+    ),
+    Order.Status.COMPLETED: (
+        "The job is finished and fully paid. The order is closed and cannot be "
+        "moved any further."
+    ),
+}
 
 PIPELINE_COLUMNS = [
     (Order.Status.JOB_REQUEST, "Job Request"),
@@ -169,6 +189,7 @@ def order_detail(request, order_id):
                     "A payment is already awaiting staff review.",
                 )
                 return redirect("order_detail", order_id=order.order_id)
+            sync_lead_stage(order)
             messages.success(
                 request,
                 "Payment proof submitted. Staff will review it shortly.",
@@ -337,12 +358,11 @@ def staff_order_detail(request, order_id):
     if is_pending_edit and next_status == Order.Status.PRODUCTION:
         if not order.final_design:
             production_confirm_message = (
-                "No final design has been uploaded. Move to Production anyway?"
+                "No final design has been uploaded for this order."
             )
         elif not order.customer_approved_current_design:
             production_confirm_message = (
-                "The customer has not approved the latest final design yet. "
-                "Move to Production anyway?"
+                "The customer has not approved the latest final design yet."
             )
 
     return render(
@@ -363,6 +383,11 @@ def staff_order_detail(request, order_id):
                 f"Move to {dict(Order.Status.choices).get(next_status)}"
                 if next_status
                 else None
+            ),
+            "current_status_label": order.get_status_display(),
+            "current_status_meaning": STATUS_MEANINGS.get(order.status, ""),
+            "next_status_meaning": (
+                STATUS_MEANINGS.get(next_status, "") if next_status else ""
             ),
             "advance_blocked_reason": advance_blocked_reason,
             "reject_form": PaymentRejectForm(),
@@ -493,6 +518,7 @@ def advance_order_phase(request, order_id):
         order=order,
         kind=ActivityLog.Kind.PHASE_MOVED,
     )
+    sync_lead_stage(order)
     messages.success(
         request,
         f"Moved {order.order_id} from {previous} → {nxt}.",
@@ -505,6 +531,8 @@ def advance_order_phase(request, order_id):
 def review_payment(request, order_id, payment_id):
     order = get_object_or_404(Order, order_id=order_id)
     payment = get_object_or_404(Payment, pk=payment_id, order=order)
+
+    sync_lead_stage(order)
 
     if payment.status != Payment.Status.PENDING:
         messages.error(request, "Only pending payments can be reviewed.")
@@ -611,6 +639,7 @@ def request_final_payment(request, order_id):
         kind=ActivityLog.Kind.FINAL_PAYMENT_REQUESTED,
         detail=f"Final balance {_money(order.balance_due)} · by {actor}",
     )
+    sync_lead_stage(order)
     messages.success(
         request,
         f"Final payment requested: ₱{order.balance_due}. The customer can now pay it.",

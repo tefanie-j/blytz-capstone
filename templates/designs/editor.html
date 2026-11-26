@@ -881,11 +881,13 @@ body{background:var(--bg-primary)!important;color:var(--text-primary)}
 .blytz-dark ::-webkit-scrollbar-track{background:var(--bg-panel)}
 .blytz-dark ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px}
 .blytz-dark ::-webkit-scrollbar-thumb:hover{background:var(--gold-lo)}
+[data-blytz-layer="print-area"]{display:none!important}
 </style>
 
 <script src="{% static 'vendor/fabric/fabric.min.js' %}?v=stage-h1"></script>
 <script src="{% static 'js/editor_canvas.js' %}?v=stage-r5"></script>
-<script src="{% static 'js/editor_garments.js' %}?v=stage-h1"></script>
+<script src="{% static 'js/editor_silhouette.js' %}?v=sil-2" defer></script>
+<script src="{% static 'js/editor_garments.js' %}?v=stage-h2"></script>
 <script src="{% static 'js/editor_tools.js' %}?v=stage-h2"></script>
 <script src="{% static 'js/remove_bg_client.js' %}?v=stage-r2"></script>
 <script src="{% static 'js/editor_properties.js' %}?v=stage-r5"></script>
@@ -897,7 +899,7 @@ body{background:var(--bg-primary)!important;color:var(--text-primary)}
 <script src="{% static 'js/editor_page.js' %}?v=stage-h1" defer></script>
 <script src="{% static 'js/editor_title_sync.js' %}?v=stage-h1" defer></script>
 {% endblock %}
-{% block navbar %}{% include "components/navbar_editor.html" %}{% endblock %}
+{% block navbar %}{% include "components/navbar_customer.html" with editor_mode=True %}{% endblock %}
 {% block footer %}{% endblock %}
 {% block content %}
 <div class="blytz-dark">

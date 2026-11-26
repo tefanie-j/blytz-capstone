@@ -1,23 +1,7 @@
-{% extends "base_staff_nosidebar.html" %}
-
-{% block title %}Accounting · {{ order.order_id }} — Blytz{% endblock %}
-
-{% block staff_content %}
-{% include "orders/_staff_detail_styles.html" %}
-
+{# Accounting order detail body. Used by the full page (detail.html) and the staff modal (modal=True). #}
 <section class="so-wrap">
 
-  {# ── Breadcrumb ─────────────────────────────────────── #}
-  <p class="so-crumbs">
-    <a href="{% url 'accounting_list' %}" aria-label="Back to Accounting" class="so-back">
-      <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
-      </svg>
-    </a>
-    <a href="{% url 'accounting_list' %}" style="text-decoration:underline">Accounting</a>
-    <span>/</span>
-    <span class="so-mono">{{ order.order_id }}</span>
-  </p>
+  {% include "components/_modal_messages.html" %}
 
   {# ── Header ─────────────────────────────────────────── #}
   <header class="so-head">
@@ -133,37 +117,88 @@
       </section>
 
       <section class="so-card" aria-labelledby="ac-manual-title">
-        <div class="so-card-head"><h2 id="ac-manual-title">Manual payment adjustment</h2></div>
+        <div class="so-card-head so-card-head-row">
+          <h2 id="ac-manual-title">Manual Payment Recording</h2>
+          <p>Record payments received outside the online payment system.</p>
+        </div>
         <div class="so-body">
-          <form method="post" enctype="multipart/form-data" class="so-form">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="add_payment">
-            <div class="so-field">
-              <label for="id_amount_claimed">Amount (₱)</label>
-              <input type="number" step="0.01" name="amount_claimed" id="id_amount_claimed" required class="so-input is-mono">
-            </div>
-            <div class="so-field">
-              <label for="id_note">Note</label>
-              <input type="text" name="note" id="id_note" class="so-input">
-            </div>
-            <div class="so-field">
-              <label for="id_channel">Channel (optional)</label>
-              <select name="channel" id="id_channel" class="so-input">
-                <option value="">—</option>
-                {% for ch in payment_form.fields.channel.queryset %}
-                <option value="{{ ch.pk }}">{{ ch.display_name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="so-field">
-              <label for="id_proof_file">Proof (optional)</label>
-              <input type="file" name="proof_file" id="id_proof_file" class="so-file">
-            </div>
-            <p class="so-help">Recorded as a Downpayment before the final balance is requested, and as a Final balance after it.</p>
-            <div><button type="submit" class="so-save">Add adjustment</button></div>
-          </form>
+          <button type="button" class="so-save" style="width:100%"
+                  onclick="document.getElementById('manual-payment-dialog').showModal()">
+            + Record manual payment
+          </button>
         </div>
       </section>
+
+      {# Pop-up form for the manual payment #}
+      <style>
+        .mp { margin:auto; padding:0; width:calc(100% - 2rem); max-width:30rem; overflow:hidden;
+              border:1px solid rgba(255,255,255,.7); border-radius:1.5rem; color:#111;
+              background:rgba(255,255,255,.92);
+              -webkit-backdrop-filter:blur(30px); backdrop-filter:blur(30px);
+              box-shadow:0 30px 80px rgba(0,0,0,.3); }
+        .mp::backdrop { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+        .mp__panel { padding:1.5rem; }
+        .mp__title { margin:0; font-size:1.25rem; font-weight:800; color:#000; }
+        .mp__sub { margin:.3rem 0 1.1rem; font-size:.85rem; color:#6b7280; }
+        .mp__actions { display:flex; justify-content:flex-end; align-items:center; gap:.75rem; margin-top:1.25rem; }
+        .mp__cancel { min-height:2.5rem; padding:.5rem 1.25rem; border:0; border-radius:9999px; cursor:pointer;
+                      background:rgba(120,120,128,.16); color:#48484a; font-size:.875rem; font-weight:600; }
+        .mp__cancel:hover { background:rgba(120,120,128,.26); }
+      </style>
+
+      <dialog id="manual-payment-dialog" class="mp"
+              {% if payment_form.errors %}data-open-on-render{% endif %}
+              onclick="if (event.target === this) this.close()">
+        <form method="post" enctype="multipart/form-data" class="mp__panel so-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_payment">
+
+          <h2 class="mp__title">Record manual payment</h2>
+          <p class="mp__sub">
+            {{ order.order_id }} · will be recorded as
+            {% if order.balance_due is not None %}a Final balance payment{% else %}a Downpayment{% endif %}.
+          </p>
+
+          {% if payment_form.non_field_errors %}
+          <p class="so-error">{{ payment_form.non_field_errors|striptags }}</p>
+          {% endif %}
+
+          <div class="so-field">
+            <label for="id_amount_claimed">Amount (₱)</label>
+            <input type="number" step="0.01" name="amount_claimed" id="id_amount_claimed" required
+                   value="{{ payment_form.amount_claimed.value|default_if_none:'' }}"
+                   class="so-input is-mono">
+            {% if payment_form.amount_claimed.errors %}<p class="so-error">{{ payment_form.amount_claimed.errors|striptags }}</p>{% endif %}
+          </div>
+
+          <div class="so-field">
+            <label for="id_note">Note</label>
+            <input type="text" name="note" id="id_note"
+                   value="{{ payment_form.note.value|default_if_none:'' }}" class="so-input">
+          </div>
+
+          <div class="so-field">
+            <label for="id_channel">Channel (optional)</label>
+            <select name="channel" id="id_channel" class="so-input">
+              <option value="">—</option>
+              {% for ch in payment_form.fields.channel.queryset %}
+              <option value="{{ ch.pk }}">{{ ch.display_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="so-field">
+            <label for="id_proof_file">Proof (optional)</label>
+            <input type="file" name="proof_file" id="id_proof_file" class="so-file">
+            {% if payment_form.proof_file.errors %}<p class="so-error">{{ payment_form.proof_file.errors|striptags }}</p>{% endif %}
+          </div>
+
+          <div class="mp__actions">
+            <button type="button" class="mp__cancel" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="so-save">Add Payment</button>
+          </div>
+        </form>
+      </dialog>
       {% else %}
       <section class="so-card">
         <div class="so-card-head"><h2>Read only</h2></div>
@@ -175,4 +210,3 @@
     </aside>
   </div>
 </section>
-{% endblock %}

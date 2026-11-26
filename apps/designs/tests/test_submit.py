@@ -133,7 +133,7 @@ class DesignSubmitTests(TestCase):
         self.assertEqual(payment.status, Payment.Status.PENDING)
         self.assertEqual(order.total_paid, Decimal("0.00"))
         self.assertTrue(payment.proof_file)
-        self.assertEqual(lead.stage, Lead.Stage.NEW_LEAD)
+        self.assertEqual(lead.stage, Lead.Stage.ORDER_CONFIRMED)
         self.assertEqual(
             order.canvas_json_snapshot["canvas"]["objects"][0]["type"], "rect"
         )
